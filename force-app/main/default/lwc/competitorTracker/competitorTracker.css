@@ -1,0 +1,51 @@
+.search-results {
+    position: absolute;
+    z-index: 7;
+    max-height: 220px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #dddbda;
+    width: 100%;
+    margin-top: 0.1rem;
+    border-radius: 0.25rem;
+}
+
+.search-results li {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+}
+
+.search-results li:hover {
+    background-color: #f3f2f2;
+}
+
+.competitor-card {
+    background-color: #ffffff;
+}
+
+.threat-badge {
+    display: inline-block;
+    padding: 0.05rem 0.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.threat-high {
+    background-color: #fde9e9;
+    color: #ba0517;
+}
+
+.threat-medium {
+    background-color: #fff3cd;
+    color: #8a6d00;
+}
+
+.threat-low {
+    background-color: #e3f7e8;
+    color: #096a2e;
+}
+
+.link-button {
+    width: 100%;
+}

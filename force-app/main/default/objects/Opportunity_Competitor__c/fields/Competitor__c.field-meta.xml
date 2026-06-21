@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Competitor__c</fullName>
+    <label>Competitor</label>
+    <type>Lookup</type>
+    <referenceTo>Competitor__c</referenceTo>
+    <relationshipLabel>Opportunity Links</relationshipLabel>
+    <relationshipName>Opportunity_Links</relationshipName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <required>true</required>
+</CustomField>

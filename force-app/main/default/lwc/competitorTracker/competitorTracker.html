@@ -1,0 +1,197 @@
+<template>
+    <lightning-card title="Competitor Tracker" icon-name="standard:opportunity">
+        <div class="slds-p-horizontal_medium slds-p-bottom_small">
+
+            <!-- Search & Link -->
+            <div class="slds-grid slds-gutters slds-grid_vertical-align-end slds-wrap">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-12 slds-p-bottom_x-small slds-is-relative">
+                    <lightning-input
+                        label="Search competitors"
+                        placeholder="Type at least 2 characters…"
+                        value={searchTerm}
+                        onchange={handleSearchInput}
+                        disabled={selectedCompetitor}
+                    ></lightning-input>
+
+                    <template if:true={hasSearchResults}>
+                        <ul class="search-results slds-dropdown slds-dropdown_fluid">
+                            <template for:each={searchResults} for:item="result">
+                                <li
+                                    key={result.Id}
+                                    class="slds-listbox__option slds-listbox__option_plain"
+                                    data-id={result.Id}
+                                    onclick={handleSelectCompetitor}
+                                >
+                                    <span class="slds-truncate">{result.Name}</span>
+                                    <span class="slds-text-body_small slds-text-color_weak"> · {result.Industry__c}</span>
+                                </li>
+                            </template>
+                        </ul>
+                    </template>
+
+                    <template if:true={selectedCompetitor}>
+                        <div class="slds-p-top_xx-small">
+                            <span class="slds-badge">{selectedCompetitor.name}</span>
+                            <lightning-button-icon
+                                icon-name="utility:close"
+                                variant="bare"
+                                size="x-small"
+                                alternative-text="Clear selection"
+                                onclick={handleClearSelection}
+                            ></lightning-button-icon>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12 slds-p-bottom_x-small">
+                    <lightning-combobox
+                        label="Threat level"
+                        value={newThreatLevel}
+                        options={threatLevelOptions}
+                        onchange={handleNewThreatLevelChange}
+                    ></lightning-combobox>
+                </div>
+
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_3-of-12 slds-p-bottom_x-small">
+                    <lightning-button
+                        variant="brand"
+                        label="Link Competitor"
+                        onclick={handleLink}
+                        disabled={isLinkDisabled}
+                        class="slds-size_1-of-1 link-button"
+                    ></lightning-button>
+                </div>
+            </div>
+
+            <hr class="slds-m-vertical_small" />
+
+            <!-- Linked Competitors -->
+            <template if:true={hasRows}>
+                <template for:each={rows} for:item="row">
+                    <div key={row.id} class="competitor-card slds-box slds-box_x-small slds-m-bottom_small">
+
+                        <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                            <div class="slds-grid slds-grid_vertical-align-center slds-grow">
+                                <lightning-button-icon
+                                    icon-name={row.expandIcon}
+                                    variant="bare"
+                                    size="small"
+                                    alternative-text="Expand stats"
+                                    data-id={row.id}
+                                    onclick={handleToggleExpand}
+                                ></lightning-button-icon>
+                                <div class="slds-p-left_x-small">
+                                    <div class="slds-text-heading_small">{row.competitorName}</div>
+                                    <span class={row.threatBadgeClass}>{row.threatLevel}</span>
+                                </div>
+                            </div>
+
+                            <div class="slds-no-flex">
+                                <template if:false={row.isEditing}>
+                                    <lightning-button-icon
+                                        icon-name="utility:edit"
+                                        alternative-text="Edit"
+                                        data-id={row.id}
+                                        onclick={handleEdit}
+                                    ></lightning-button-icon>
+                                </template>
+                                <lightning-button-icon
+                                    icon-name="utility:delete"
+                                    alternative-text="Remove"
+                                    data-id={row.id}
+                                    onclick={handleRemove}
+                                ></lightning-button-icon>
+                            </div>
+                        </div>
+
+                        <!-- Read-only notes -->
+                        <template if:false={row.isEditing}>
+                            <p class="slds-text-body_small slds-p-top_x-small slds-truncate">{row.truncatedNotes}</p>
+                        </template>
+
+                        <!-- Edit mode -->
+                        <template if:true={row.isEditing}>
+                            <div class="slds-grid slds-gutters slds-wrap slds-p-top_x-small">
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12">
+                                    <lightning-combobox
+                                        label="Threat level"
+                                        value={row.threatLevel}
+                                        options={threatLevelOptions}
+                                        data-id={row.id}
+                                        onchange={handleEditThreatLevel}
+                                    ></lightning-combobox>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12">
+                                    <lightning-combobox
+                                        label="Loss reason"
+                                        value={row.lossReason}
+                                        options={lossReasonOptions}
+                                        data-id={row.id}
+                                        onchange={handleEditLossReason}
+                                    ></lightning-combobox>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1">
+                                    <lightning-textarea
+                                        label="Notes"
+                                        value={row.notes}
+                                        data-id={row.id}
+                                        onchange={handleEditNotes}
+                                    ></lightning-textarea>
+                                </div>
+                            </div>
+                            <div class="slds-p-top_x-small slds-text-align_right">
+                                <lightning-button label="Cancel" data-id={row.id} onclick={handleCancelEdit}></lightning-button>
+                                <lightning-button
+                                    class="slds-m-left_x-small"
+                                    variant="brand"
+                                    label="Save"
+                                    data-id={row.id}
+                                    onclick={handleSave}
+                                ></lightning-button>
+                            </div>
+                        </template>
+
+                        <!-- Stats panel -->
+                        <template if:true={row.isExpanded}>
+                            <div class="stats-panel slds-box slds-box_x-small slds-theme_shade slds-m-top_x-small">
+                                <template if:true={row.stats}>
+                                    <div class="slds-grid slds-gutters slds-wrap">
+                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                            <p class="slds-text-title">Total Opportunities</p>
+                                            <p class="slds-text-heading_small">{row.stats.totalOpportunities}</p>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                            <p class="slds-text-title">Win Rate</p>
+                                            <p class="slds-text-heading_small">{row.stats.winRate}</p>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                            <p class="slds-text-title">Avg Deal (Won)</p>
+                                            <p class="slds-text-heading_small">{row.stats.avgDealSizeWon}</p>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                                            <p class="slds-text-title">Avg Deal (Lost)</p>
+                                            <p class="slds-text-heading_small">{row.stats.avgDealSizeLost}</p>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template if:false={row.stats}>
+                                    <lightning-spinner alternative-text="Loading stats" size="small"></lightning-spinner>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </template>
+
+            <template if:false={hasRows}>
+                <p class="slds-text-body_small slds-text-color_weak slds-p-vertical_small">
+                    No competitors linked yet. Search above to add one.
+                </p>
+            </template>
+
+            <template if:true={isLoading}>
+                <lightning-spinner alternative-text="Working" size="small"></lightning-spinner>
+            </template>
+        </div>
+    </lightning-card>
+</template>

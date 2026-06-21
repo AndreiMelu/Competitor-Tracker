@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Require_Competitor_Before_Proposal</fullName>
+    <active>true</active>
+    <description>Blocks moving an Opportunity from Needs Analysis to Proposal/Price Quote unless at least one competitor has been linked via Opportunity_Competitor__c. Only gates that specific transition so reps are not blocked earlier in the pipeline.</description>
+    <errorConditionFormula>AND(
+    ISPICKVAL(StageName, &quot;Proposal/Price Quote&quot;),
+    ISPICKVAL(PRIORVALUE(StageName), &quot;Needs Analysis&quot;),
+    Competitor_Count__c = 0
+)</errorConditionFormula>
+    <errorMessage>Please link at least one competitor before moving this opportunity to Proposal/Price Quote.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,6 @@
+.sf/
+.sfdx/
+.vscode/
+**/jsconfig.json
+**/.eslintrc.json
+**/__tests__/**

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Competitor_Count__c</fullName>
+    <label>Competitor Count</label>
+    <type>Summary</type>
+    <summaryForeignKey>Opportunity_Competitor__c.Opportunity__c</summaryForeignKey>
+    <summaryOperation>count</summaryOperation>
+    <description>Roll-up count of linked Opportunity_Competitor__c records. Used by the Require_Competitor_Before_Proposal validation rule to gate stage progression.</description>
+</CustomField>
