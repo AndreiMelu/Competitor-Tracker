@@ -6,8 +6,8 @@ import LightningConfirm from 'lightning/confirm';
 import searchCompetitors from '@salesforce/apex/CompetitorTrackerController.searchCompetitors';
 import linkCompetitor from '@salesforce/apex/CompetitorTrackerController.linkCompetitor';
 import getLinkedCompetitors from '@salesforce/apex/CompetitorTrackerController.getLinkedCompetitors';
-import updateLink from '@salesforce/apex/CompetitorTrackerController.updateLink';
-import removeLink from '@salesforce/apex/CompetitorTrackerController.removeLink';
+import updateOppCompetitor from '@salesforce/apex/CompetitorTrackerController.updateOpportunityCompetitor';
+import removeOppCompetitor from '@salesforce/apex/CompetitorTrackerController.removeOpportunityCompetitor';
 import getStats from '@salesforce/apex/CompetitorTrackerController.getStats';
 
 const THREAT_LEVEL_OPTIONS = [
@@ -41,13 +41,13 @@ export default class CompetitorTracker extends LightningElement {
 
     rows = [];
     isLoading = false;
-    wiredLinksResult;
+    oppCompetitorResult;
 
     searchTimeout;
 
     @wire(getLinkedCompetitors, { opportunityId: '$recordId' })
     wiredLinks(result) {
-        this.wiredLinksResult = result;
+        this.oppCompetitorResult = result;
         if (result.data) {
             this.rows = result.data.map((rec) => this.toRow(rec));
         } else if (result.error) {
@@ -83,7 +83,6 @@ export default class CompetitorTracker extends LightningElement {
         return 'threat-badge';
     }
 
-    // Search method
     handleSearchInput(event) {
         const value = event.target.value;
         this.searchTerm = value;
@@ -155,7 +154,7 @@ export default class CompetitorTracker extends LightningElement {
                 this.notifySuccess('Competitor linked');
                 this.handleClearSelection();
                 this.newThreatLevel = 'Medium';
-                return refreshApex(this.wiredLinksResult);
+                return refreshApex(this.oppCompetitorResult);
             })
             .catch((error) => {
                 this.notifyError('Unable to link competitor', error);
@@ -210,15 +209,15 @@ export default class CompetitorTracker extends LightningElement {
             winRate:
                 data.winRate === null || data.winRate === undefined
                     ? 'N/A'
-                    : `${(data.winRate * 100).toFixed(1)}%`,
+                    : `${(data.winRate * 100).toFixed(2)}%`,
             avgDealSizeWon:
                 data.avgDealSizeWon === null || data.avgDealSizeWon === undefined
                     ? 'N/A'
-                    : data.avgDealSizeWon,
+                    : `${(data.avgDealSizeWon.toFixed(2))}`,
             avgDealSizeLost:
                 data.avgDealSizeLost === null || data.avgDealSizeLost === undefined
                     ? 'N/A'
-                    : data.avgDealSizeLost
+                    : `${(data.avgDealSizeLost.toFixed(2))}`
         };
     }
 
@@ -229,8 +228,8 @@ export default class CompetitorTracker extends LightningElement {
 
     handleCancelEdit(event) {
         const id = event.currentTarget.dataset.id;
-        if (this.wiredLinksResult && this.wiredLinksResult.data) {
-            const original = this.wiredLinksResult.data.find((r) => r.Id === id);
+        if (this.oppCompetitorResult && this.oppCompetitorResult.data) {
+            const original = this.oppCompetitorResult.data.find((r) => r.Id === id);
             if (original) {
                 const refreshedRow = this.toRow(original);
                 this.rows = this.rows.map((row) =>
@@ -269,8 +268,8 @@ export default class CompetitorTracker extends LightningElement {
             return;
         }
         this.isLoading = true;
-        updateLink({
-            linkId: row.id,
+        updateOppCompetitor({
+            opportunityCompetitorId: row.id,
             threatLevel: row.threatLevel,
             lossReason: row.lossReason,
             notes: row.notes
@@ -278,7 +277,7 @@ export default class CompetitorTracker extends LightningElement {
             .then(() => {
                 this.notifySuccess('Changes saved');
                 this.rows = this.rows.map((r) => (r.id === id ? { ...r, isEditing: false } : r));
-                return refreshApex(this.wiredLinksResult);
+                return refreshApex(this.oppCompetitorResult);
             })
             .catch((error) => {
                 this.notifyError('Unable to save changes', error);
@@ -306,10 +305,10 @@ export default class CompetitorTracker extends LightningElement {
         }
 
         this.isLoading = true;
-        removeLink({ linkId: row.id })
+        removeOppCompetitor({ opportunityCompetitorId: row.id })
             .then(() => {
                 this.notifySuccess('Competitor removed');
-                return refreshApex(this.wiredLinksResult);
+                return refreshApex(this.oppCompetitorResult);
             })
             .catch((error) => {
                 this.notifyError('Unable to remove competitor', error);

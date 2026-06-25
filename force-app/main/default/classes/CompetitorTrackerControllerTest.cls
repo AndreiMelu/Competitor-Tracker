@@ -3,8 +3,8 @@ private class CompetitorTrackerControllerTest {
 
     @TestSetup
     static void setup() {
-        Competitor__c comp1 = new Competitor__c(Name = 'Acme Corp', Industry__c = 'Software');
-        Competitor__c comp2 = new Competitor__c(Name = 'Globex', Industry__c = 'Hardware');
+        Competitor__c comp1 = new Competitor__c(Name = 'Competitor1', Industry__c = 'Software');
+        Competitor__c comp2 = new Competitor__c(Name = 'Competitor2', Industry__c = 'Hardware');
         insert new List<Competitor__c>{ comp1, comp2 };
 
         Account acct = new Account(Name = 'Test Account');
@@ -25,11 +25,11 @@ private class CompetitorTrackerControllerTest {
 
     @isTest
     static void testSearchCompetitors_returnsMatches() {
-        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Acme Corp' LIMIT 1];
+        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Competitor1' LIMIT 1];
         Test.setFixedSearchResults(new List<Id>{ comp.Id });
 
         Test.startTest();
-        List<Competitor__c> results = CompetitorTrackerController.searchCompetitors('Acme');
+        List<Competitor__c> results = CompetitorTrackerController.searchCompetitors('Competitor1');
         Test.stopTest();
 
         System.assertEquals(1, results.size(), 'Expected one matching competitor');
@@ -43,7 +43,7 @@ private class CompetitorTrackerControllerTest {
 
     @isTest
     static void testLinkCompetitor_success() {
-        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Acme Corp' LIMIT 1];
+        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Competitor1' LIMIT 1];
         Opportunity opp = [SELECT Id FROM Opportunity LIMIT 1];
 
         Test.startTest();
@@ -57,7 +57,7 @@ private class CompetitorTrackerControllerTest {
 
     @isTest
     static void testLinkCompetitor_duplicateThrows() {
-        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Acme Corp' LIMIT 1];
+        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Competitor1' LIMIT 1];
         Opportunity opp = [SELECT Id FROM Opportunity LIMIT 1];
 
         CompetitorTrackerController.linkCompetitor(opp.Id, comp.Id, 'Low');
@@ -73,7 +73,7 @@ private class CompetitorTrackerControllerTest {
 
     @isTest
     static void testGetLinkedCompetitors() {
-        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Acme Corp' LIMIT 1];
+        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Competitor1' LIMIT 1];
         Opportunity opp = [SELECT Id FROM Opportunity LIMIT 1];
         CompetitorTrackerController.linkCompetitor(opp.Id, comp.Id, 'Low');
 
@@ -86,15 +86,15 @@ private class CompetitorTrackerControllerTest {
     }
 
     @isTest
-    static void testUpdateAndRemoveLink() {
-        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Acme Corp' LIMIT 1];
+    static void testUpdateAndRemoveOpportunityCompetitor() {
+        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Competitor1' LIMIT 1];
         Opportunity opp = [SELECT Id FROM Opportunity LIMIT 1];
         Opportunity_Competitor__c link =
             CompetitorTrackerController.linkCompetitor(opp.Id, comp.Id, 'Low');
 
         Test.startTest();
-        CompetitorTrackerController.updateLink(link.Id, 'High', 'Price', 'Updated notes');
-        CompetitorTrackerController.removeLink(link.Id);
+        CompetitorTrackerController.updateOpportunityCompetitor(link.Id, 'High', 'Price', 'Updated notes');
+        CompetitorTrackerController.removeOpportunityCompetitor(link.Id);
         Test.stopTest();
 
         List<Opportunity_Competitor__c> remaining = [
@@ -105,7 +105,7 @@ private class CompetitorTrackerControllerTest {
 
     @isTest
     static void testGetStats_mixedWinsAndLosses() {
-        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Globex' LIMIT 1];
+        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Competitor2' LIMIT 1];
         List<Opportunity> opps = [SELECT Id, Amount FROM Opportunity ORDER BY Amount LIMIT 4];
 
         for (Opportunity o : opps) {
@@ -133,7 +133,7 @@ private class CompetitorTrackerControllerTest {
 
     @isTest
     static void testGetStats_noClosedOpportunities() {
-        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Acme Corp' LIMIT 1];
+        Competitor__c comp = [SELECT Id FROM Competitor__c WHERE Name = 'Competitor1' LIMIT 1];
         Opportunity opp = [SELECT Id FROM Opportunity LIMIT 1];
         CompetitorTrackerController.linkCompetitor(opp.Id, comp.Id, 'Low');
 

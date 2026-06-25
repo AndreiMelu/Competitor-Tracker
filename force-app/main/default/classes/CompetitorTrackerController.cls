@@ -1,23 +1,20 @@
 /**
  * Controller for the competitorTracker LWC.
- * All DML and SOQL/SOSL for the Competitor Tracker feature lives here so the
- * component never touches data directly.
+ * All DML and SOQL/SOSL for the Competitor Tracker feature are here, called from the LWC's JavaScript via @AuraEnabled methods.
+ * @author Andrei Melu
+ * @date 2026-06-21
  */
+
 public with sharing class CompetitorTrackerController {
+    private static final String DUPLICATE_ERROR = 'This competitor is already linked to this opportunity.';
+    private static final String MISSING_ID_ERROR = 'Missing record Id.';
 
-    private static final String DUPLICATE_ERROR =
-        'This competitor is already linked to this opportunity.';
-
-    // ---------------------------------------------------------------
-    // Search
-    // ---------------------------------------------------------------
     @AuraEnabled(cacheable=true)
     public static List<Competitor__c> searchCompetitors(String searchTerm) {
         String term = (searchTerm == null) ? '' : searchTerm.trim();
 
         if (term.length() < 2) {
-            // Avoids noisy/erroring SOSL calls on every keystroke before the
-            // user has typed anything meaningful.
+            // Avoids SOSL calls on every keystroke before user has typed at least 2 characters.
             return new List<Competitor__c>();
         }
 
@@ -32,15 +29,10 @@ public with sharing class CompetitorTrackerController {
         return (List<Competitor__c>) results[0];
     }
 
-    // ---------------------------------------------------------------
-    // Link
-    // ---------------------------------------------------------------
     @AuraEnabled
-    public static Opportunity_Competitor__c linkCompetitor(
-        Id opportunityId, Id competitorId, String threatLevel) {
-
+    public static Opportunity_Competitor__c linkCompetitor(Id opportunityId, Id competitorId, String threatLevel) {
         if (opportunityId == null || competitorId == null) {
-            throw new AuraHandledException('Opportunity and Competitor are required.');
+            throw new AuraHandledException('Opportunity and Competitor are required!');
         }
 
         Integer existing = [
@@ -62,11 +54,6 @@ public with sharing class CompetitorTrackerController {
         try {
             insert link;
         } catch (DmlException e) {
-            // Belt-and-braces: covers the (rare) race condition between the
-            // existence check above and the insert itself.
-            if (e.getMessage().contains('DUPLICATE_VALUE') || e.getMessage().contains('UNIQUE')) {
-                throw new AuraHandledException(DUPLICATE_ERROR);
-            }
             throw new AuraHandledException('Unable to link competitor: ' + e.getMessage());
         }
 
@@ -77,9 +64,6 @@ public with sharing class CompetitorTrackerController {
         ];
     }
 
-    // ---------------------------------------------------------------
-    // Read
-    // ---------------------------------------------------------------
     @AuraEnabled(cacheable=true)
     public static List<Opportunity_Competitor__c> getLinkedCompetitors(Id opportunityId) {
         if (opportunityId == null) {
@@ -94,16 +78,13 @@ public with sharing class CompetitorTrackerController {
         ];
     }
 
-    // ---------------------------------------------------------------
-    // Update
-    // ---------------------------------------------------------------
     @AuraEnabled
-    public static void updateLink(Id linkId, String threatLevel, String lossReason, String notes) {
-        if (linkId == null) {
-            throw new AuraHandledException('Missing record Id.');
+    public static void updateOpportunityCompetitor(Id opportunityCompetitorId, String threatLevel, String lossReason, String notes) {
+        if (opportunityCompetitorId == null) {
+            throw new AuraHandledException(MISSING_ID_ERROR);
         }
 
-        Opportunity_Competitor__c oc = new Opportunity_Competitor__c(Id = linkId);
+        Opportunity_Competitor__c oc = new Opportunity_Competitor__c(Id = opportunityCompetitorId);
         oc.Threat_Level__c = threatLevel;
         oc.Loss_Reason__c = lossReason;
         oc.Notes__c = notes;
@@ -111,42 +92,27 @@ public with sharing class CompetitorTrackerController {
         try {
             update oc;
         } catch (DmlException e) {
-            throw new AuraHandledException('Unable to update link: ' + e.getMessage());
+            throw new AuraHandledException('Unable to update: ' + e.getMessage());
         }
     }
 
-    // ---------------------------------------------------------------
-    // Remove
-    // ---------------------------------------------------------------
     @AuraEnabled
-    public static void removeLink(Id linkId) {
-        if (linkId == null) {
-            throw new AuraHandledException('Missing record Id.');
+    public static void removeOpportunityCompetitor(Id opportunityCompetitorId) {
+        if (opportunityCompetitorId == null) {
+            throw new AuraHandledException(MISSING_ID_ERROR);
         }
         try {
-            delete new Opportunity_Competitor__c(Id = linkId);
+            delete new Opportunity_Competitor__c(Id = opportunityCompetitorId);
         } catch (DmlException e) {
-            throw new AuraHandledException('Unable to remove link: ' + e.getMessage());
+            throw new AuraHandledException('Unable to remove competitor link: ' + e.getMessage());
         }
     }
 
-    // ---------------------------------------------------------------
-    // Stats
-    // ---------------------------------------------------------------
     @AuraEnabled(cacheable=true)
     public static CompetitorStats getStats(Id competitorId) {
         if (competitorId == null) {
-            throw new AuraHandledException('Missing competitor Id.');
+            throw new AuraHandledException(MISSING_ID_ERROR);
         }
-
-        List<Opportunity_Competitor__c> links = [
-            SELECT Opportunity__c, Opportunity__r.StageName, Opportunity__r.IsWon, Opportunity__r.IsClosed, Opportunity__r.Amount
-            FROM Opportunity_Competitor__c
-            WHERE Competitor__c = :competitorId
-        ];
-
-        CompetitorStats stats = new CompetitorStats();
-        stats.totalOpportunities = links.size();
 
         Integer wonCount = 0;
         Integer lostCount = 0;
@@ -155,11 +121,21 @@ public with sharing class CompetitorTrackerController {
         Decimal lostAmountTotal = 0;
         Integer lostAmountCount = 0;
 
-        for (Opportunity_Competitor__c link : links) {
-            Opportunity opp = link.Opportunity__r;
+        List<Opportunity_Competitor__c> oppCompetitorList = [
+            SELECT Opportunity__c, Opportunity__r.StageName, Opportunity__r.IsWon, Opportunity__r.IsClosed, Opportunity__r.Amount
+            FROM Opportunity_Competitor__c
+            WHERE Competitor__c = :competitorId
+        ];
+
+        CompetitorStats stats = new CompetitorStats();
+        stats.totalOpportunities = oppCompetitorList.size();
+
+        for (Opportunity_Competitor__c oppCompetitor : oppCompetitorList) {
+            Opportunity opp = oppCompetitor.Opportunity__r;
             if (opp == null || !opp.IsClosed) {
-                continue; // only Closed Won/Lost opps count toward win rate
+                continue;
             }
+            
             if (opp.IsWon) {
                 wonCount++;
                 if (opp.Amount != null) {
@@ -174,14 +150,12 @@ public with sharing class CompetitorTrackerController {
                 }
             }
         }
-
-        Integer decidedCount = wonCount + lostCount;
-        stats.winRate = (decidedCount == 0)
-            ? null
-            : (Decimal.valueOf(wonCount) / decidedCount).setScale(4);
-
         stats.wonCount = wonCount;
         stats.lostCount = lostCount;
+        Integer totalCount = wonCount + lostCount;
+        stats.winRate = (totalCount == 0)
+            ? null
+            : (Decimal.valueOf(wonCount) / totalCount).setScale(4);
         stats.avgDealSizeWon = (wonAmountCount == 0)
             ? null
             : (wonAmountTotal / wonAmountCount).setScale(2);
@@ -192,15 +166,12 @@ public with sharing class CompetitorTrackerController {
         return stats;
     }
 
-    // ---------------------------------------------------------------
-    // Wrapper
-    // ---------------------------------------------------------------
     public class CompetitorStats {
         @AuraEnabled public Integer totalOpportunities;
         @AuraEnabled public Integer wonCount;
         @AuraEnabled public Integer lostCount;
-        @AuraEnabled public Decimal winRate;          // 0..1, null when there are no closed opps
-        @AuraEnabled public Decimal avgDealSizeWon;   // null when there are no won amounts
-        @AuraEnabled public Decimal avgDealSizeLost;  // null when there are no lost amounts
+        @AuraEnabled public Decimal winRate;
+        @AuraEnabled public Decimal avgDealSizeWon;
+        @AuraEnabled public Decimal avgDealSizeLost;
     }
 }
