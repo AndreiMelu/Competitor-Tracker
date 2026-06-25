@@ -1,124 +1,76 @@
-# Competitor Tracker — Sales Cloud
+# Competitor Tracker
 
-A Lightning Web Component for the Opportunity record page that lets reps search
-for and link known competitors, track threat level and notes per deal, and see
-historical win/loss performance against each competitor.
+## What is this?
+This is a new feature built directly into your Salesforce Opportunity pages. It gives your sales reps a dedicated place to track which competitors they're facing on each deal: how big of a threat they are, any notes about how the deal is playing out, and a quick look at how we've historically done against that competitor across all of our opportunities.
 
-## What's included
+## What can sales reps do with it?
+When a rep opens any Opportunity in Salesforce, they'll see a ”Competitor Tracker panel” on the page. From there they can:
 
-```
-force-app/main/default/
-├── objects/
-│   ├── Competitor__c/                       Standalone competitor object
-│   ├── Opportunity_Competitor__c/           Junction object (Opportunity <-> Competitor)
-│   └── Opportunity/
-│       ├── fields/Competitor_Count__c       Roll-up COUNT of linked competitors
-│       └── validationRules/                 Gates Needs Analysis -> Proposal/Price Quote
-├── classes/
-│   ├── CompetitorTrackerController.cls      All SOQL/SOSL/DML for the feature
-│   └── CompetitorTrackerControllerTest.cls  Unit tests (8 methods, all paths)
-├── lwc/competitorTracker/                   The LWC itself
-└── permissionsets/Competitor_Tracker_Access Grants object/field/Apex access
-```
+**Search and add competitors**
+Start typing a competitor's name and matching results appear automatically. 
+Select one, set a threat level (Low, Medium, or High), and link it to the deal in one click.
 
-## Deploying to your sandbox
+**See all competitors on a deal at a glance**
+Every competitor linked to that opportunity shows up as a card with their name, threat level and any notes the sales rep added.
 
-You'll need the [Salesforce CLI](https://developer.salesforce.com/tools/salesforcecli)
-(`sf`) installed and authenticated to your sandbox/Dev Hub.
+**Edit on the fly**
+They can update the threat level, add a loss reason (Price, Features, Relationship, Other), or write notes directly from the card added on the page.
 
-```bash
-# 1. Authenticate (opens a browser login)
-sf org login web --alias myPlayground --instance-url https://test.salesforce.com
+**Remove a competitor**
+If a competitor drops out of a deal, the rep can remove them. There's a confirmation step so nothing gets deleted by accident.
 
-# 2. From the project root, deploy everything
-sf project deploy start --target-org myPlayground
+**See historical performance against each competitor**
+Click the arrow next to any competitor and a stats panel expands showing:
+- How many opportunities they've faced that competitor in total
+- Our win rate against them (only counting deals that are actually closed)
+- Our average deal size (when we win / when we lose against them)
 
-# 3. Assign the permission set to yourself (or any test user)
-sf org assign permset --name Competitor_Tracker_Access --target-org myPlayground
+This gives reps real context going into a deal — not just "we've competed against **Competitor X** before" but "we've faced **Competitor X** 14 times and we win 60% of the time, but our average deal is smaller when we lose, which usually means price was the issue."
 
-# 4. Run the tests (optional but recommended)
-sf apex run test --tests CompetitorTrackerControllerTest --target-org myPlayground --result-format human
-```
+**Stage gate — you can't skip ahead without logging a competitor**
+Created a rule that prevents reps from moving an opportunity from *Needs Analysis* (or earlier stage) to *Proposal/Price Quote* (or later stage) unless at least one competitor has been logged. This is intentional because before putting a proposal, we should know who we are against.
 
-Alternatively, open the project folder in VS Code with the **Salesforce
-Extensions Pack** installed, authenticate via the command palette, then
-right-click `force-app` → **SFDX: Deploy Source to Org**.
+## How do I get this set up?
+This is handled by your **Salesforce administrator or developer**.
+If you are nota tehnical person, please forward this file and ask them to deploy it and assign the **Competitor Tracker Access** permission set to the relevant users.
+After that, make sure competitors are already in the system as **Competitor records** so sales reps can find them when they search. Bulk-import these records if you there is a list.
 
-### After deploying
+## Technical setup (for Salesforce admin/developer)
+Install Salesforce CLI and connect to the wanted org.
+- Connect to specific org (environment)
+- Deploy everything
+- Give users access
 
-The component isn't placed on the page layout automatically (Lightning page
-assignments aren't part of standard metadata deploys in this project). To add
-it:
+After deploying, go to Opportunity record -> Setup -> Edit Page -> drag the **Competitor Tracker** component onto the layout → Save and Activate.
 
-1. Open any Opportunity record → **Setup gear → Edit Page**.
-2. Drag **Competitor Tracker** from the Custom components list onto the page.
-3. Save and activate the page (org default, or for the relevant app/profile).
+## TODO
 
-You'll also want a few `Competitor__c` records to search against — easiest via
-the Competitors tab/related list or Data Import Wizard.
+1. Build a Competitor Intelligence Hub
+Competitors exist as simple records with a name and an industry. 
+We could expand each competitor's profile to include their pricing, their key product, known weaknesses, and links to sales enablement materials. 
+Reps would have everything they need in one place.
 
-## Design decisions & trade-offs
+2. Reports and dashboards for steakholders/leadership
+Data is now structured in Salesforce, which means it can be reported like:
+- Which competitors show up most often across our pipeline
+- Our win rate broken down by competitor, by region, or by sales rep
+- Deals where High-threat competitors are present and where there is no move in 30+ days
 
-- **Card layout over `lightning-datatable`.** The spec allows either. Cards
-  made it straightforward to combine inline edit, a truncated-notes view, and
-  an expandable stats panel in one row without fighting `lightning-datatable`'s
-  draft-values API for non-table content like the stats grid.
-- **SOSL over LIKE for search.** SOSL needed `Test.setFixedSearchResults` for
-  test coverage but scales better than `LIKE '%term%'` once there are many
-  competitors, and naturally tokenizes multi-word names. A 2-character minimum
-  avoids firing SOSL on every keystroke before the user has typed anything
-  meaningful.
-- **Duplicate prevention is enforced in Apex, not a unique field.** A
-  formula-based composite key on a junction object isn't eligible for a
-  `unique` constraint in Salesforce, so `linkCompetitor` checks for an
-  existing row before insert and also catches the rare DML race. If this
-  needed to be bulletproof under concurrent inserts, a Duplicate Rule on
-  `Opportunity_Competitor__c` (Opportunity + Competitor) would be the next
-  step.
-- **Win rate / average deal size only count *closed* opportunities.**
-  Open opportunities linked to a competitor count toward "Total
-  Opportunities" but are excluded from win rate and average deal size, since
-  they don't have a final outcome yet. Both metrics return `null` (rendered as
-  `N/A`) rather than `0` when there's no decided data, so "no data" isn't
-  visually indistinguishable from "always lost."
-- **Validation rule uses a roll-up summary, not Apex.** Because
-  `Opportunity__c` on the junction object is a **Master-Detail** field (not a
-  Lookup), a declarative roll-up (`Competitor_Count__c`, COUNT) is available
-  on Opportunity, and the validation rule reads that directly — no trigger
-  needed. The rule only fires on the specific `Needs Analysis` →
-  `Proposal/Price Quote` transition (checked via `PRIORVALUE`), so reps moving
-  between earlier stages, or already past Proposal, are never blocked.
-  Stage API names are assumed to match Salesforce's standard defaults; adjust
-  the two `ISPICKVAL` literals in the validation rule if your org uses custom
-  stage names.
-- **Picklist options are hardcoded in the LWC** (Threat Level, Loss Reason)
-  rather than fetched via the UI API's picklist endpoints. This keeps the
-  component simpler and avoids an extra wire/Apex round trip, at the cost of
-  needing a manual update if the picklist values change. For a component
-  expected to evolve, `getPicklistValuesByRecordType` would be the more
-  robust choice.
-- **Accordion-style row expansion.** Only one stats panel is open at a time.
-  This was a UX call to keep the page from getting tall when a deal is facing
-  several competitors; it'd be a one-line change to allow multiple rows open
-  simultaneously if preferred.
-- **`with sharing` throughout**, and the permission set grants object/field
-  access without `Modify All` — access decisions stay governed by the running
-  user's actual sharing/visibility rather than the controller bypassing it.
+This kind of visibility helps sales leadership understand the hole competitive landscape, not just deal by deal.
 
-## Apex test coverage
+3. Add note to link competitor
+When linking a competitor to an opportunity, the sales rep should be able to also add a note at the same time.
 
-`CompetitorTrackerControllerTest` covers: search (match + below-minimum-length
-short-circuit), link (success + server-side duplicate rejection), read,
-update, delete, and stats for both a mixed win/loss competitor and a
-competitor with no closed opportunities (verifying the null/divide-by-zero
-handling explicitly).
+3. Competitive alerts for leadership
+If a competitor is flagged as High threat on a deal, we could trigger an automatic notification to the opportunity owner's manager. 
+This gives leadership a chance to get involved early.
 
-## Known gaps / next steps
+4. Competitor deduplication
+If the team is large enough, eventually end up with duplicate competitor records. Ex: one person enters "Salesforce" and another enters "Salesforce.com". 
+Adding a duplicate prevention rule on the competitor records would keep the data clean without relying on everyone will search first.
 
-- No Lightning App Builder page metadata is included, since page assignment
-  is environment-specific (see "After deploying" above).
-- No CI config (e.g. GitHub Actions running `sf apex run test`) is included —
-  worth adding if this moves beyond a take-home exercise.
-- Competitor records have no de-duplication of their own; two `Competitor__c`
-  rows named "Acme" would both be linkable. Out of scope per the assessment,
-  but a real implementation would likely want a duplicate rule here too.
+
+
+## Technical note
+Since Opportunity_Competitor__c is Master-Detail relationship, can't have a different record sharing than its parent (Opportunity).
+Using Master-Detail against Lookup because of using Competitors card on Opportunity page and need to have a roll-up summary field.
