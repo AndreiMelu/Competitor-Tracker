@@ -2,7 +2,7 @@
     <lightning-card title="Competitor Tracker" icon-name="standard:opportunity">
         <div class="slds-p-horizontal_medium slds-p-bottom_small">
 
-            <!-- Search & Link -->
+            <!-- Search -->
             <div class="slds-grid slds-gutters slds-grid_vertical-align-end slds-wrap">
                 <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-12 slds-p-bottom_x-small slds-is-relative">
                     <lightning-input
@@ -104,12 +104,12 @@
                             </div>
                         </div>
 
-                        <!-- Read-only notes -->
+                        <!-- Notes (readonly) -->
                         <template if:false={row.isEditing}>
                             <p class="slds-text-body_small slds-p-top_x-small slds-truncate">{row.truncatedNotes}</p>
                         </template>
 
-                        <!-- Edit mode -->
+                        <!-- Edit -->
                         <template if:true={row.isEditing}>
                             <div class="slds-grid slds-gutters slds-wrap slds-p-top_x-small">
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12">
@@ -151,7 +151,7 @@
                             </div>
                         </template>
 
-                        <!-- Stats panel -->
+                        <!-- Stats -->
                         <template if:true={row.isExpanded}>
                             <div class="stats-panel slds-box slds-box_x-small slds-theme_shade slds-m-top_x-small">
                                 <template if:true={row.stats}>
